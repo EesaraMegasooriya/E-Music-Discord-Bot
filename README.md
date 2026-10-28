@@ -47,6 +47,27 @@ Copy `.env.example` to `.env` and fill in `DISCORD_TOKEN`, `SPOTIFY_CLIENT_ID` a
 ```
 If PowerShell blocks the scripts, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
+### Ubuntu Server (runs automatically at boot)
+
+Copy the project to the server, create `.env`, then run:
+
+```bash
+chmod +x deploy/install-ubuntu.sh
+./deploy/install-ubuntu.sh
+```
+
+The installer installs Java 21 LTS, creates two systemd services, starts Lavalink before the bot, and
+automatically restarts either process after a crash. Useful commands:
+
+```bash
+sudo systemctl status emusic-lavalink emusic-bot
+sudo journalctl -u emusic-lavalink -u emusic-bot -f
+sudo systemctl restart emusic-lavalink emusic-bot
+```
+
+Lavalink listens only on `127.0.0.1`, so no firewall rule or router port
+forwarding is required. Disconnecting SSH does not stop either service.
+
 Slash commands can take up to an hour to appear globally. Set `DEV_GUILD_ID` in `.env` to your server's ID to get them instantly while testing.
 
 ## Commands
