@@ -1,0 +1,137 @@
+# Lavalink config for E Music Bot.
+# Values like ${SPOTIFY_CLIENT_ID} are read from the environment;
+# start-lavalink.ps1 loads them from the project's .env file.
+
+server:
+  port: 2333
+  address: 127.0.0.1
+  http2:
+    enabled: false
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+    # Queried in order; falls through to the next one if a client fails.
+    # Measured Oct 2026: IOS streams a whole song in under a second (no throttling) and needs no cipher,
+    # so it goes first for the fastest song starts. TV (signed in, via remoteCipher) is the backup.
+    # YouTube blocks different clients at different times, so the rest stay as further fallbacks.
+    clients:
+      - MUSIC # search only
+      - IOS
+      - TV # plays with the signed-in account (see oauth below)
+      - TVHTML5_SIMPLY
+      - ANDROID_MUSIC
+      - MWEB
+      - WEB
+      - WEBEMBEDDED
+      - ANDROID_VR
+    clientOptions:
+      IOS:
+        searching: false # IOS returns empty YouTube searches; it's only used for playback
+    # YouTube's player code changes often and the plugin's built-in decoder falls behind ("must find sig function"),
+    # which breaks the TV/WEB clients. yt-cipher decodes it remotely. Public instance by the yt-cipher author;
+    # if it is ever down, clients that don't need it (IOS) still play. Self-host: https://github.com/kikkia/yt-cipher
+    remoteCipher:
+      url: "https://cipher.kikkia.dev/"
+      userAgent: "e-music-bot"
+    oauth:
+      # Signs the TV client in so YouTube doesn't block playback ("Sign in to confirm you're not a bot").
+      # First start prints a code to enter at google.com/device; use a spare Google account, not your main one.
+      # After signing in, the console prints a refresh token; put it in .env as YOUTUBE_REFRESH_TOKEN.
+      # To sign in again: remove YOUTUBE_REFRESH_TOKEN and set skipInitialization to false.
+      enabled: true
+      refreshToken: "${YOUTUBE_REFRESH_TOKEN:}" # saved in .env
+      skipInitialization: true
+
+  lavasrc:
+    # Spotify only provides metadata; audio is matched on YouTube (ISRC first, then title search).
+    providers:
+      - "ytsearch:\"%ISRC%\""
+      - "ytsearch:%QUERY%"
+    sources:
+      spotify: true
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      youtube: false
+    spotify:
+      clientId: "${SPOTIFY_CLIENT_ID:}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET:}"
+      countryCode: "US"
+      playlistLoadLimit: 10 # pages of 100 tracks
+      albumLoadLimit: 6 # pages of 50 tracks
+      # Spotify removed batch endpoints (/v1/artists?ids=, /v1/tracks?ids=) for new apps in Feb 2026,
+      # which broke search and album loading (LavaSrc issue #351). These settings avoid those endpoints.
+      resolveArtistsInSearch: false
+      preferPartnerApi: false # web-player API needs a logged-in token; the official API works with client id/secret
+      localFiles: false
+
+lavalink:
+  plugins:
+    # Snapshot build (commit 2be8e54, Sep 2026): newer than release 1.18.2 and includes YouTube fixes.
+    # Switch back to a release version once one newer than 1.18.2 is out.
+    - dependency: "dev.lavalink.youtube:youtube-plugin:2be8e542d3f6f178e048dca565892684c2e40177"
+      repository: "https://maven.lavalink.dev/snapshots"
+      snapshot: true
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
+      repository: "https://maven.lavalink.dev/releases"
+  server:
+    password: "${LAVALINK_PASSWORD:youshallnotpass}"
+    sources:
+      youtube: false # replaced by the youtube plugin above
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      nico: false
+      http: true
+      local: false
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+
+    # Smooth playback settings
+    bufferDurationMs: 400 # NAS buffer; absorbs CPU hiccups
+    frameBufferDurationMs: 5000 # 5s of pre-encoded audio, so short network stalls are not heard
+    opusEncodingQuality: 10 # max quality
+    resamplingQuality: HIGH
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true # keep playing the old position while a seek loads
+    playerUpdateInterval: 5
+    youtubePlaylistLoadLimit: 6
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+sentry:
+  dsn: ""
+  environment: ""
+
+logging:
+  file:
+    path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
+  request:
+    enabled: false
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 7

@@ -1,0 +1,7 @@
+.env
+.venv/
+__pycache__/
+lavalink/Lavalink.jar
+lavalink/plugins/
+lavalink/logs/
+data/

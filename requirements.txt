@@ -1,0 +1,3 @@
+discord.py>=2.4,<3
+wavelink>=3.5.2,<4
+python-dotenv>=1.0
